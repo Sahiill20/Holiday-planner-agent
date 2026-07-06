@@ -116,7 +116,8 @@ selected_model_option = st.sidebar.selectbox(
         "Qwen 2.5 72B (Qwen/Qwen2.5-72B-Instruct:fastest)",
         "Llama 3.1 8B (meta-llama/Llama-3.1-8B-Instruct:fastest)",
         "Qwen 2.5 Coder 32B (Qwen/Qwen2.5-Coder-32B-Instruct:fastest)",
-        "Mistral 7B (mistralai/Mistral-7B-Instruct-v0.3:fastest)"
+        "Mistral 7B (mistralai/Mistral-7B-Instruct-v0.3:fastest)",
+        "Demo / Offline Mode (mock)"
     ],
     index=0,
     help="Select the serverless LLM model to build your itinerary."

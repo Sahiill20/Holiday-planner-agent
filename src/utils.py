@@ -24,10 +24,164 @@ for k in list(os.environ.keys()):
 hf_token = os.environ.get("HUGGINGFACEHUB_API_TOKEN") or os.environ.get("HuggingFaceHub_API_Token")
 if hf_token:
     os.environ["HUGGINGFACEHUB_API_TOKEN"] = hf_token.strip()
+else:
+    print("[warning] HUGGINGFACEHUB_API_TOKEN was not found in environment variables. Offline Mock/Demo mode is available.")
 
-# Enforce token validation
-if not os.environ.get("HUGGINGFACEHUB_API_TOKEN"):
-    raise ValueError("HUGGINGFACEHUB_API_TOKEN was not found in environment variables. Please check your .env file.")
+
+class MockLLM(LLM):
+    @property
+    def _llm_type(self) -> str:
+        return "mock_llm"
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        prompt_lower = prompt.lower()
+        
+        # 1. Scope Check
+        if "scope gatekeeper" in prompt_lower:
+            # If prompt has out of scope trigger, return False
+            if "sort an array" in prompt_lower or "how to bake" in prompt_lower or "write a python script" in prompt_lower:
+                return '{"in_scope": false}'
+            return '{"in_scope": true}'
+            
+        # 2. Coordinates Geocoder
+        if "find the latitude and longitude" in prompt_lower:
+            return '{"latitude": 19.8762, "longitude": 75.3433}'
+            
+        # 3. Main Destination Extractor
+        if "identify the primary destination" in prompt_lower:
+            return "Aurangabad"
+            
+        # 4. Metadata extractor
+        if "analyze the user request and any existing itinerary draft. extract:" in prompt_lower:
+            return '{"start_city": "Nagpur", "destination": "Aurangabad", "landmarks": ["Ajanta Caves", "Ellora Caves"]}'
+            
+        # 5. Landmark scheduling analysis
+        if "parse the following travel itinerary and extract all landmark/location visits" in prompt_lower:
+            if "monday" in prompt_lower:
+                return """{
+  "visits": [
+    {
+      "landmark": "Ajanta Caves",
+      "day_number": 1,
+      "day_of_week": "Monday"
+    },
+    {
+      "landmark": "Ellora Caves",
+      "day_number": 2,
+      "day_of_week": "Tuesday"
+    }
+  ]
+}"""
+            else:
+                return """{
+  "visits": [
+    {
+      "landmark": "Ajanta Caves",
+      "day_number": 1,
+      "day_of_week": "Tuesday"
+    },
+    {
+      "landmark": "Ellora Caves",
+      "day_number": 2,
+      "day_of_week": "Wednesday"
+    }
+  ]
+}"""
+
+        # 6. Weather Adaptor
+        if "weather adaptor agent" in prompt_lower:
+            return "NO WEATHER ERRORS"
+            
+        # 7. Planner Node - Revision Loop
+        if "revise the previous travel itinerary" in prompt_lower:
+            return """# Aurangabad Travel Plan (Revised & Corrected)
+
+## Day 1 (Tuesday)
+* Morning: Drive Nagpur to Aurangabad [Cost: ₹2000]
+* Afternoon: Visit **Ajanta Caves** (Rescheduled to Tuesday because it is closed on Mondays) [Cost: ₹500]
+* Dinner at hotel [Cost: ₹600]
+
+## Day 2 (Wednesday)
+* Visit **Ellora Caves** [Cost: ₹400]
+* Shopping at local handicraft market [Cost: ₹500]
+
+*Note: Total accommodation cost [Cost: ₹4500]*"""
+
+        # 8. Planner Node - Fresh Draft
+        if "lead travel planner agent" in prompt_lower:
+            return """# Aurangabad Travel Plan Draft
+
+## Day 1 (Monday)
+* Morning: Drive Nagpur to Aurangabad [Cost: ₹2000]
+* Afternoon: Visit **Ajanta Caves** (Note: this is closed on Mondays, but validator will fix it!) [Cost: ₹500]
+* Dinner at hotel [Cost: ₹600]
+
+## Day 2 (Tuesday)
+* Visit **Ellora Caves** [Cost: ₹400]
+* Shopping at local market [Cost: ₹500]
+
+*Note: Total accommodation cost [Cost: ₹4500]*"""
+
+        # 9. Formatter Node
+        if "formatter & exporter agent" in prompt_lower:
+            return """# ✈️ Verified Aurangabad Travel Itinerary
+
+Welcome to your verified Aurangabad travel plan! 
+
+### 🗓️ Daily Details
+
+| Day | Activities | Cost | Status |
+| :--- | :--- | :--- | :--- |
+| **Day 1 (Tuesday)** | Drive Nagpur to Aurangabad | ₹2,000 | Planned |
+| | Visit the heritage **Ajanta Caves** | ₹500 | **Verified Open** |
+| | Dinner at hotel | ₹600 | Included |
+| **Day 2 (Wednesday)** | Visit **Ellora Caves** | ₹400 | **Verified Open** |
+| | Shopping at local handicraft market | ₹500 | Planned |
+
+### 💰 Total Budget Breakdown
+* **Accommodation**: ₹4,500
+* **Activities & Transport**: ₹2,900
+* **Meals**: ₹1,200
+* **Total Estimated Cost**: ₹8,600
+
+> ⚠️ **Verification Action**: The planner originally scheduled **Ajanta Caves** on Day 1 (Monday). The validator detected a temporal collision because Ajanta Caves is closed on Mondays, and automatically rescheduled it to Tuesday. All coordinates are verified to be within 40km, ensuring daily feasibility!"""
+
+        # 10. JSON Exporter Node
+        if "convert the following travel itinerary into a structured json payload" in prompt_lower:
+            return """{
+  "destination": "Aurangabad",
+  "month": "July 2026",
+  "max_budget": 10000.0,
+  "total_estimated_cost": 8600.0,
+  "days": [
+    {
+      "day": 1,
+      "day_of_week": "Tuesday",
+      "theme": "Heritage",
+      "activities": [
+        {"activity": "Drive Nagpur to Aurangabad", "cost": 2000.0, "location": "Aurangabad"},
+        {"activity": "Ajanta Caves visit", "cost": 500.0, "location": "Ajanta Caves"}
+      ]
+    },
+    {
+      "day": 2,
+      "day_of_week": "Wednesday",
+      "theme": "History & Shopping",
+      "activities": [
+        {"activity": "Ellora Caves visit", "cost": 400.0, "location": "Ellora Caves"},
+        {"activity": "Shopping", "cost": 500.0, "location": "Aurangabad"}
+      ]
+    }
+  ]
+}"""
+
+        return "Mock response"
 
 
 class HFInferenceClientLLM(LLM):
@@ -62,7 +216,7 @@ class HFInferenceClientLLM(LLM):
 
 def get_llm(model_type: str = "default"):
     """
-    Exclusively initializes the Hugging Face InferenceClient LLM.
+    Exclusively initializes the Hugging Face InferenceClient LLM or the Mock LLM.
     Uses HF_MODEL_NAME environment variable if set by user selector,
     otherwise defaults to Qwen 2.5 72B.
     """
@@ -73,11 +227,15 @@ def get_llm(model_type: str = "default"):
         if k.strip() != k:
             os.environ[k.strip()] = os.environ[k]
             
+    model_name = os.environ.get("HF_MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct:fastest")
+    if "mock" in model_name.lower():
+        print(f"[get_llm] Initializing Mock Offline Demo LLM Mode")
+        return MockLLM()
+
     hf_token = os.environ.get("HUGGINGFACEHUB_API_TOKEN") or os.environ.get("HuggingFaceHub_API_Token")
     if not hf_token:
         raise ValueError("HUGGINGFACEHUB_API_TOKEN was not found in environment variables. Please check your .env file.")
         
-    model_name = os.environ.get("HF_MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct:fastest")
     print(f"[get_llm] Initializing Custom HF InferenceClient LLM: {model_name} | Model Type: {model_type}")
     return HFInferenceClientLLM(
         model_name=model_name,
