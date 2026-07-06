@@ -199,11 +199,12 @@ class HFInferenceClientLLM(LLM):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
+        current_model = os.environ.get("HF_MODEL_NAME", self.model_name)
+        if "mock" in current_model.lower():
+            return MockLLM()._call(prompt, stop, run_manager, **kwargs)
+
         client = InferenceClient(api_key=self.api_token)
         messages = [{"role": "user", "content": prompt}]
-        
-        # Pull model name dynamically or use default
-        current_model = os.environ.get("HF_MODEL_NAME", self.model_name)
         
         resp = client.chat.completions.create(
             model=current_model,
