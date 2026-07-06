@@ -108,18 +108,45 @@ def security_scrubber_node(state: AgentState) -> Dict[str, Any]:
     """
     Security Feature: Intercepts raw user inputs and redacts sensitive PII
     (Names, Emails, and Phone Numbers) using robust regex & rule-based scrubbing.
+    Also performs out-of-scope validation to ensure requests relate to travel.
     """
     raw_prompt = state["user_request"]
     
-    # 1. Email Redaction
+    # 1. Scope Guard Check
+    llm = get_llm("structured")
+    scope_prompt = f"""
+You are the Scope Gatekeeper for a Personalized Travel & Holiday Planning Agent.
+Evaluate if the following user request is related to travel, geography, lodging, transportation, itineraries, booking, sightseeing, landmarks, or holiday planning.
+
+User Request: "{raw_prompt}"
+
+Output format: Output ONLY a valid JSON object with a single key "in_scope" (boolean). True if the request is related to travel/planning, False otherwise.
+Do not add introductory or concluding remarks, or markdown code block syntax.
+Example:
+{{"in_scope": true}}
+"""
+    try:
+        response = llm.invoke(scope_prompt)
+        text = get_content(response).strip().replace("```json", "").replace("```", "").strip()
+        data = json.loads(text)
+        in_scope = bool(data.get("in_scope", True))
+    except Exception:
+        in_scope = True
+        
+    if not in_scope:
+        return {
+            "user_request": "__OUT_OF_SCOPE__"
+        }
+        
+    # 2. Email Redaction
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
     scrubbed = re.sub(email_pattern, "[REDACTED_EMAIL]", raw_prompt)
     
-    # 2. Phone Number Redaction
+    # 3. Phone Number Redaction
     phone_pattern = r'\+?\d{1,4}[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
     scrubbed = re.sub(phone_pattern, "[REDACTED_PHONE]", scrubbed)
     
-    # 3. Name Redaction (handles phrases like 'My name is X', 'I am X', and specific names)
+    # 4. Name Redaction (handles phrases like 'My name is X', 'I am X', and specific names)
     name_phrases = [
         (r'(my name is|i am|call me|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)', r'\1 [REDACTED_NAME]'),
         (r'\b(sahil|sarah|john|smith|doe)\b', r'[REDACTED_NAME]')
@@ -139,6 +166,11 @@ def planner_node(state: AgentState) -> Dict[str, Any]:
     the previous draft to resolve validation/budget errors or apply user changes.
     Queries DuckDuckGo search to retrieve real prices and scheduling constraints.
     """
+    if state["user_request"] == "__OUT_OF_SCOPE__":
+        return {
+            "draft_itinerary": "I am sorry, but that request is out of my scope. As a Personalized Holiday Planning Agent, I can only assist with travel itineraries, destination mapping, transport/hotel costing, and holiday planning."
+        }
+
     llm = get_llm("default")
     
     # 1. Fetch real-time web search context
@@ -230,6 +262,11 @@ def validator_node(state: AgentState) -> Dict[str, Any]:
     Validator Persona: Parses the itinerary draft, queries the local MCP server for operational
     and closure constraints, and calls the geodesic distance skill to detect travel overlaps.
     """
+    if state.get("user_request") == "__OUT_OF_SCOPE__":
+        return {
+            "validation_errors": []
+        }
+
     draft = state["draft_itinerary"]
     validation_errors = []
     
@@ -382,6 +419,11 @@ def weather_adaptor_node(state: AgentState) -> Dict[str, Any]:
     and appends specific errors and indoor alternative recommendations to validation_errors.
     Supports real-time weather forecasts if dates are within 14 days, otherwise estimates.
     """
+    if state.get("user_request") == "__OUT_OF_SCOPE__":
+        return {
+            "validation_errors": []
+        }
+
     travel_dates_str = state["travel_month"]
     draft = state["draft_itinerary"]
     validation_errors = list(state.get("validation_errors", []))
@@ -479,6 +521,11 @@ def budget_tracker_node(state: AgentState) -> Dict[str, Any]:
     Budget Tracker Persona: Deterministically parses exact cost annotations [Cost: ₹XXX]
     and calculates totals against the maximum budget limit.
     """
+    if state.get("user_request") == "__OUT_OF_SCOPE__":
+        return {
+            "budget_errors": []
+        }
+
     draft = state["draft_itinerary"]
     max_budget = state["max_budget"]
     budget_errors = []
@@ -537,6 +584,12 @@ def formatter_exporter_node(state: AgentState) -> Dict[str, Any]:
     Formatter Persona: Standardizes the verified itinerary draft. Exposes elegant Markdown and structured JSON.
     """
     draft = state["draft_itinerary"]
+    if state.get("user_request") == "__OUT_OF_SCOPE__":
+        return {
+            "final_itinerary_markdown": draft,
+            "final_itinerary_json": json.dumps({"error": "Out of scope request", "message": draft}, indent=2)
+        }
+
     max_budget = state["max_budget"]
     month = state["travel_month"]
     destination = state["user_request"]
