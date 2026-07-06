@@ -1,0 +1,10 @@
+langgraph
+langchain
+streamlit
+mcp
+fastmcp
+python-dotenv
+pydantic
+langchain_huggingface
+duckduckgo-search
+requests
