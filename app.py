@@ -109,18 +109,18 @@ dates = st.sidebar.date_input(
 )
 
 # Model selection selector
-st.sidebar.subheader("🤖 Hugging Face Model")
+st.sidebar.subheader("🤖 LLM Provider & Model")
 selected_model_option = st.sidebar.selectbox(
     "Active LLM Model",
     options=[
+        "Groq Llama 3.3 70B (llama-3.3-70b-versatile)",
         "Qwen 2.5 72B (Qwen/Qwen2.5-72B-Instruct:fastest)",
         "Llama 3.1 8B (meta-llama/Llama-3.1-8B-Instruct:fastest)",
         "Qwen 2.5 Coder 32B (Qwen/Qwen2.5-Coder-32B-Instruct:fastest)",
-        "Mistral 7B (mistralai/Mistral-7B-Instruct-v0.3:fastest)",
-        "Demo / Offline Mode (mock)"
+        "Mistral 7B (mistralai/Mistral-7B-Instruct-v0.3:fastest)"
     ],
     index=0,
-    help="Select the serverless LLM model to build your itinerary."
+    help="Select the LLM model to build your itinerary."
 )
 
 # Extract repo id and set it to HF_MODEL_NAME environment variable

@@ -8,3 +8,4 @@ pydantic
 langchain_huggingface
 duckduckgo-search
 requests
+langchain-groq
